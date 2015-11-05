@@ -25,7 +25,9 @@ module.exports = function(passport) {
 		});
 	});
 	
+	//////////////
 	//Login script
+	//////////////
 	passport.use('local-login', new LocalStrategy({
 		passReqToCallback: true
 	},
@@ -52,5 +54,54 @@ module.exports = function(passport) {
 			})
 		})
 	}));
+	
+	///////////////////////////////////////
+	//Configure registration local strategy
+	///////////////////////////////////////	
+	passport.use('local-registration', new LocalStrategy({
+		passReqToCallback: true
+	}),
+	function(req, username, password, done) {
+		
+		//asynchronous process
+		process.nextTick(function() {
+			//If user isn't logged in
+			if (!req.user) {
+				//Let's find him
+				User.findOne({
+					'username': username
+				},
+				function(err, user) {
+					//if any weird errors
+					if(err) {
+						return done(err);
+					}
+					//check if username already exists
+					if(user) {
+						//If yes - show message
+						return done(null, false, req.flash('registrationMessage', 'The username is already in use.'));
+					}
+					else {
+						//If no - create user
+						var newUser = new User(req.body);
+						newUser.password = newUser.generateHash(newUser.password);
+						newUser.provider = 'local';
+						newUser.created = Date.now();
+						newUser.updated= Date.now();
+						newUser.save(function(err) {
+							if(err) {
+								throw err;
+							}
+							return done(null, newUser);
+						});
+					}
+				});
+			}
+			else {
+				//everything ok, register the user
+				return done(null, req.user);
+			}
+		});
+	});	
 	
 };
